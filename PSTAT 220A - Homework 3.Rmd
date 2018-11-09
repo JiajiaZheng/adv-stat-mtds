@@ -1,0 +1,251 @@
+---
+title: "PSTAT 220A - Homework 3"
+author: "Jiajia Zheng"
+date: "10/31/2017"
+output: pdf_document
+---
+
+**4. The dataset teengamb in library faraway concerns a study of teenager gambling in Britain.**
+**(a) Make a numerical and graphical summary of the data, commenting on any features that you find interesting.**
+```{r}
+library(faraway)
+attach(teengamb)
+summary(teengamb)
+
+par(mfrow = c(2, 3))
+hist(sex, main = "sex")
+hist(status, main = "status")
+hist(income, main = "income")
+hist(verbal, main = "verbal")
+hist(gamble, main = "gamble")
+plot(gamble, sex,  main = "sex", pch = c(1,2)[as.factor(sex)])
+
+par(mfrow=c(2,2))
+qqnorm(teengamb[,"status"], main="status"); qqline(teengamb[,"status"])
+qqnorm(teengamb[,"income"], main="income"); qqline(teengamb[,"income"])
+qqnorm(teengamb[,"verbal"], main="verbal"); qqline(teengamb[,"verbal"])
+qqnorm(teengamb[,"gamble"], main="gamble"); qqline(teengamb[,"gamble"])
+```
+</br>
+
+In general, expenditure spent on gambling is less in population with higher income. Men tend to spending more money on gambling than women. 
+
+</br>
+
+**(b) Fit a simple linear regression model with the expenditure on gambling as the response and income as covariate. Present the results.**
+```{r}
+lm1 <- lm(gamble ~ income)
+summary(lm1)
+anova(lm1)
+```
+The linear regression model fitted for gambling expenditure by income is Y = -6.325 + 5.520 * income.
+
+</br>
+
+**(c) Compute LS estimates in R using formula in problem 1. Check if you get the same estimates as those in (b).**
+```{r}
+lm1$coefficients
+x <- model.matrix(lm1)
+betahat <- solve(t(x)%*%x)%*%t(x)%*%gamble
+```
+We got the same results with the linear model coefficients using the formula in problem 1.
+
+</br>
+
+**(d) What percentage of variation in the response is explained by the covariate?**
+
+R-squared:  0.387, Adjusted R-squared:  0.3734
+Therefore, the gambling expenditure can be explained by income by 38.7%.
+
+</br>
+
+**(e) Which observation has the largest absolute residual (give the case number)?**
+```{r}
+which.max(abs(lm1$residuals))
+```
+The 24th observation has the largest absolute residual.
+
+</br>
+
+**(f) What are the mean and median of the residuals? Comment on these values**
+```{r}
+mean(lm1$residuals)
+median(lm1$residuals)
+```
+The mean and median of the residuals is -5.2e-16 and -3.757 respectively. The mean is nearly zero, since we assume they are normally distributed. The median indicates that there are more negative residuals.
+
+</br>
+
+**(g) What is the multiple correlation coefficient? How is it related to the R^2?**
+```{r}
+mcc <- cor(gamble, lm1$fit)
+mcc^2
+summary(lm1)$r.squared
+```
+</br>
+
+Multiple correlation coefficient is a measure of how well a given variable can be predicted using a linear function of a set of other variables. Its square equals to R^2.
+
+</br>
+
+**(h) Report 99% confidence intervals for the intercept and slope parameters.**
+```{r}
+CI <- confint(lm1, level = 0.99)
+CI
+```
+
+</br>
+
+**(i) Plot confidence region for both the intercept and slope parameters.**
+```{r}
+library(ellipse)
+plot(ellipse(lm1, level = 0.99), type = "l", col = "red")
+abline (v = CI[1,], lty = 2)
+abline (h = CI[2,], lty = 2)
+points(0,0)
+points(coef(lm1)[1], coef(lm1)[2], pch = 16, col = "red")
+```
+
+</br>
+
+**(j) Construct pointwise and simultaneous 95% confidence band for the prediction of future mean response and the prediction of future observations.**
+```{r}
+par(mfrow = c(1,2))
+grid <- seq(min(income), max(income), len = 100)
+
+p1 <- predict(lm1, newdata = data.frame(income = grid), se = T, interval = "confidence")
+p2 <- predict(lm1, newdata = data.frame(income = grid), se = T, interval = "prediction")
+matplot(grid, p1$fit, lty = c(1,2,2), col = c(1,2,2), type = "l",
+        xlab = "Income (pounds/week)", ylab = "Gambling (pounds/year)",
+        ylim = range(p1$fit, p2$fit, gamble))
+points(income, gamble, cex = 0.5)
+lines(grid, p1$fit[,1] - sqrt(2*qf(0.95,2,length(x)-2))*p1$se.fit,
+      lty = 3, col = "blue")
+lines(grid, p1$fit[,1] + sqrt(2*qf(0.95,2,length(x)-2))*p1$se.fit,
+      lty = 3, col = "blue")
+title("Prediction of mean response")
+
+matplot(grid, p2$fit, lty = c(1,2,2), col = c(1,2,2), type = "l",
+        xlab = "Income (pounds/week)", ylab = "Gambling (pounds/year)",
+        ylim = range(p1$fit, p2$fit, gamble))
+points(income, gamble, cex = 0.5)
+lines(grid, p2$fit[,1] - sqrt(2*qf(0.95,2,length(x)-2))*p2$se.fit,
+      lty = 3, col = "blue")
+lines(grid, p2$fit[,1] + sqrt(2*qf(0.95,2,length(x)-2))*p2$se.fit,
+      lty = 3, col = "blue")
+title("Prediction of future observations")
+```
+</br>
+
+**5. A researcher in a scientific foundation wished to evaluate the relation between in- termediate and senior level annual salaries of research mathematicians (y, in thousand dollars) and an index of publication quality (x1), number of years of experience (x2), and an index of success in obtaining grant support (x3). The data for a sample of 25 intermediate and senior level research mathematicians is available at http://www.pstat.ucsb.edu/faculty/yuedong/classes/data/salaries.data. Four columns are x1, x2, x3 and y respectively.**
+
+**(a) Prepare a histogram for each of the independent variables. What information do these plots provide?**
+```{r}
+data <- read.table("http://www.pstat.ucsb.edu/faculty/yuedong/classes/data/salaries.data",
+                   col.names = c("Publication","Experience","Grant","Salary"))
+par(mfrow = c(2,2))
+hist(data$Publication)
+hist(data$Experience)
+hist(data$Grant)
+```
+</br>
+
+The Publication quality and grant support data seems to follow approximate normal distribution, whereas years of experience does not.
+
+</br>
+
+**(b) Plot the response vs each of the independent variables. What information do these plots provide?**
+```{r}
+par(mfrow = c(2,2))
+plot(Salary ~ Publication, data = data, xlab = "Publication Quality", ylab = "Salary")
+plot(Salary ~ Experience, data = data, xlab = "Years of Experience", ylab = "Salary")
+plot(Salary ~ Grant, data = data, xlab = "Grant Support", ylab = "Salary")
+```
+</br>
+
+Comparing the three variables, it can be told through the above plot that salaries are highly correlated to years of experience, somewhat correlated to publication quality and much less correlated to grant support.
+
+</br>
+
+**(c) Fit a simple linear model using all three independent variables.**
+```{r}
+lm2 <- lm(Salary ~ Publication + Experience + Grant, data = data)
+summary(lm2)
+```
+The fitted linear model using all three independent variables is y = 17.4078 + 1.2603 x1 + 0.30179 x2 + 1.28073 x3.
+
+</br>
+
+**(d) Does the model fit data well?**
+</br>
+
+This model fits the data pretty well. The R square value is 0.8929, meaning that this model can explain 89% of the response variables. The F-statistic value is also high with a very small p-value, indicating the rejection of null hypothesis and at least one of the coefficient is not zero.
+
+</br>
+
+**(e) State which variables are statistically significant.**
+</br>
+
+From the summary table of the model, we can see that all the p-value of the coefficients are very small, meaning they are all statistically significant. Among all the p-values, the coefficient Experience has the lowest, meaning it is the most significant variable.
+
+</br>
+
+**(f) Compute 90% confidence interval for the parameter associated with x2. Based on this interval, what could we have deducted about the p-value for x1 and x2 in the regression summary?**
+```{r}
+CI2 <- confint(lm2, level = 0.9)
+CI2
+```
+</br>
+
+The 90% confidence interval for x2 is [0.2357596, 0.3678147]. The p-value for x1 and x2 are 0.001420 and 0.000642 respectively, indicating the rejection of null hypothesis and that the coefficients are not equal to zero.
+
+</br>
+
+**(g) Plot a 95% joint confidence region for the parameters associated with x1 and x2. Plot the origin on this figure. The location of the origin tells us the outcome of a certain hypothesis test. State that hypothesis and its outcome.**
+```{r}
+par(mfrow = c(1,1))
+CI3 <- confint(lm2, level = 0.95)
+library(ellipse)
+plot(ellipse(lm2, c(2,3), level = 0.95), type = "l", col = "red", xlim = c(-0.1, 2.2), ylim = c(-0.1, 0.4))
+abline (v = CI3[2,], lty = 2)
+abline (h = CI3[3,], lty = 2)
+points(0,0, pch = 17, col = "red")
+points(coef(lm2)[2], coef(lm2)[3], pch = 16, col = "red")
+```
+</br>
+
+Hypothesis: The two parameters x1 and x2 both equal to zero. However, it can be told from the above plot that these two parameters confidence region are far away from the origin, which indicates that they are significantly different from zero at 95% confidence interval.
+
+</br>
+
+**(h) The researcher wishes to obtain simultaneous interval estimates of the mean salary levels for four typical research mathematicians specified below:**
+
+      x_1   x_2    x_3
+Type1  5     20     5
+</br>
+
+Type2  6     30     6
+</br>
+
+Type3  4     10     4
+</br>
+
+Type4  7     50     7
+
+**Using an appropriate method to obtain the interval estimates using a 95% simultaneous confidence coefficient.**
+```{r}
+p <- predict(lm2, newdata = data.frame(Publication = c(5,6,4,7),
+             Experience = c(20,30,10,50), Grant = c(5,6,4,7)),
+             se = T, interval = "confidence")
+p$fit[,1] - sqrt(2*qf(0.95,4,21))*p$se.fit
+p$fit[,1] + sqrt(2*qf(0.95,4,21))*p$se.fit
+```
+
+</br>
+
+**(i) The salary of a research mathematician with x1 = 7, x2 = 10 and x3 = 7.9 is $35,000. Can he/she claim that he/she is grossly underpaid?**
+```{r}
+A_prediction <- data.frame(Publication = 7, Experience = 10, Grant = 7.9)
+predict(lm2, A_prediction, interval = "prediction")
+```
+The salary prediction interval for this research mathematician is [34.76, 43.97] pounds per year. His or her salary $35.000 is within this range and is thus not underpaid.

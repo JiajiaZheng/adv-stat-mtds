@@ -1,0 +1,420 @@
+---
+title: "Homework2 - 220A - Jiajia Zheng"
+author: "Jiajia Zheng"
+date: "10/16/2017"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+###1. For each of Examples A-J (except C) in the file hw2scan.pdf, state which of the fol- lowing tests you would apply and (briefly) why: paired t-test, singed rank test, two sample t-test (equal variances or unequal variances), Wilcoxon rank test, other. Conduct appropriate tests.
+
+**A. Honey on Hemoglobin Level**
+```{r}
+Honey <- c(19,12,9,17,24,24)
+No_Honey <- c(14,8,4,4,11,11)
+shapiro.test(Honey - No_Honey)
+wilcox.test(Honey,No_Honey, pair = TRUE, alternative = "greater")
+```
+The p-value of Shapiro test is 0.01214, meaning that the sample residual is not normally distributed. So use Wilcoxon paired test and get p-value 0.01675. Then the null hypothesis is rejected and it can be concluded that honey can significantly increase hemoglobin level.
+</br>
+
+**B. Drug on Premature Heart Beats**
+```{r}
+Before <- c(6,9,17,22,7,5,5,14,9,7,9,51)
+After <- c(5,2,0,0,2,1,0,0,0,0,13,0)
+shapiro.test(Before - After) 
+wilcox.test(Before, After, pair = TRUE, alternative = "greater")
+```
+The p-value of Shapiro test is 0.006128, meaning that the sample residual is not normally distributed. So we use Wilcoxon paired test and get p-value 0.02347. Then it can be concluded that the drug can significantly reduce premature heart beats.
+
+</br>
+
+**D. Oxygen Gel V.S. Placebo Gel on Oral Hygiene**
+```{r}
+Oxygen_Gel <- c(10,15,6,10,11,3,8,8,3,13,10,9,8,9,8,4,10,15,11,5,14,7,8,8,2,13,6,2,7,3)
+Placebo_Gel <- c(5,6,4,3,3,5,6,4,4,2,0,7,0,3,2,2,3,6,0,3,-3,1,6,6,8,2,12,24,5,3,3,3,13,4)
+shapiro.test(Oxygen_Gel) 
+shapiro.test(Placebo_Gel) 
+wilcox.test(Oxygen_Gel, Placebo_Gel)
+```
+According to the Shapiro tests results for two groups, the Oxygen_Gel data is normally distributed but the Placebo_Gel data is not. So use Wilcoxon rank sum test, and the p-value is 8.354e-05. It can be concluded that oxygen gel can significantly improve the oral hygiene level.
+
+</br>
+
+**E. Two Methods on Oxygen Density**
+```{r}
+Potassium <- c(1.42920,1.42860,1.42906,1.42957,1.42910,1.42930,1.42945)
+Electrolysis <- c(1.42932,1.42908,1.42910,1.42951,1.42933,1.42905,1.42914,1.42849,1.42894,1.42886)
+shapiro.test(Potassium) 
+shapiro.test(Electrolysis)
+var.test(Potassium, Electrolysis)
+t.test(Potassium, Electrolysis, var.eq = TRUE) 
+wilcox.test(Potassium, Electrolysis)
+```
+Both p-values in the Shapiro tests of the two datasets show normal distribution. And the equal variance test shows their variance is equal. So use two sample t-test with equal variance, and get p-value of 0.5013. Also the Wilcoxon test has p-value 0.4347, which conclude that the potassium chlorate and electronlysis methods have no significant difference on oxygen density.
+
+</br>
+
+**F. Two Methods on Nitrogen Density**
+```{r}
+Chemical <- c(2.30143,2.29890,2.29816,2.30182,2.29869,2.29940,2.29849,2.29889)
+Air <- c(2.31026,2.31017,2.30986,2.31003,2.31007,2.31024,2.31010,2.31028)
+shapiro.test(Chemical - Air)
+wilcox.test(Chemical, Air)
+```
+Shapiro test result shows the residual of two methods data is not normally distributed. So use Wilcoxon test, and get p-value 0.0001554. It can be concluded that two methods to get nitrogen density is significantly different.
+
+</br>
+
+**G. Background Music on Work Productivity**
+```{r}
+Music <- c(35.0,36.8,40.2,46.6,50.4,64.2,83.0,87.6,89.2)
+No_Music <- c(28.2,28.6,33.0,34.8,45.4,50.8,52.6,66.4,67.8)
+shapiro.test(Music - No_Music) 
+var.test(Music, No_Music)
+t.test(Music, No_Music, var.eq = FALSE, alternative = "greater") 
+wilcox.test(Music, No_Music, alternative = "greater") 
+```
+The Shapiro test shows the residual of having music or not is normally distributed. Variance test shows there is no equal variance. So we use two sample t-test with false equal variance, and get p-value 0.07212. So we conclude that there is no significant difference between workers' productivity with background music on or not. Wilcoxon test also supports this conclusion.
+
+</br>
+
+**H. Male V.S. Female Kitten Recognition Ability**
+```{r}
+Male <- c(40,76,89,106,120,130,150,155,382)
+Female <-c(66,69,94,103,117,391)
+shapiro.test(Male)
+shapiro.test(Female)
+wilcox.test(Male, Female)
+```
+The Shapiro test shows that neither of the male or female trial numbers is normally distributed. Now use Wilcoxon rank sum test, and get p-value 0.5287. Then conclude that there is no significant difference of recognition ability between male and female kittens.
+
+</br>
+
+**I. Activity Level on Flies' Lifetimes**
+```{r, include = FALSE}
+# n_High <- 200
+# n_Low <- 47
+# Mean_High <- 20.6
+# Mean_Low <- 48.1
+# Std_High <- 6
+# Std_Low <- 14.2
+# SE <- sqrt(Std_High^2/n_High + Std_Low^2/n_Low) 
+# t_stat <- (Mean_High - Mean_Low)/SE
+# df = (SE^2^2/((Std_High^2/n_High)^2/(n_High - 1) + (Std_Low^2/n_Low)^2/(n_Low - 1))) # df = 50
+# t_crit <- abs(qt(0.1/2, df))
+# L1 <- t_stat * SE - t_crit * SE
+# L2 <- t_stat * SE + t_crit * SE
+# p_value <- 2 * pt(t_stat, df)
+# c(L1, L2)
+# p_value
+```
+
+```{r}
+A <- rnorm(200, mean = 20.6, sd = 6)
+B <- rnorm(47, mean = 48.1, sd = 14.2)
+t.test(A, B, alternative = "less", conf.level = 0.90)
+```
+These two samples have different means, variance and sample sizes. We use two sample t-test with unequal variance and size. The 90% confidence interval for the advantage of low excecise is [-Inf, -25.99016]. We can reject the null hypothesis and conclude that low activity level increase lifetime of flies.
+
+</br>
+
+**J. Oxygen Exposure on Flies' Lifetimes**
+```{r, include = FALSE}
+# n_Temp <- 200
+# n_Control <- 200
+# Mean_Temp <- 25.9
+# Mean_Control <- 17.6
+# Std_Temp <- 8
+# Std_Control <- 6
+# SE2 <- sqrt(Std_Temp^2/n_Temp + Std_Control^2/n_Control)
+# t_stat2 <- (Mean_Temp - Mean_Control)/SE2
+# df2 = (SE2^2^2/((Std_Temp^2/n_Temp)^2/(n_Temp - 1) + (Std_Control^2/n_Control)^2/(n_Control - 1)))
+# t_crit2 <- abs(qt(0.05/2, df2))
+# p_value2 <- pt(t_stat2, df2)
+# p_value2
+```
+
+```{r}
+A2 <- rnorm(200, mean = 25.9, sd = 8)
+B2 <- rnorm(200, mean = 17.6, sd = 6)
+t.test(A2, B2, alternative = "less")
+```
+T-test shows the p-value is 1. Fail to conclude that the oxygen level has significantly caused damage to the flies' lifetime.
+
+***
+
+###2. For Example C in the file hw2scan.pdf, you may apply one of the above simple tests to the combined data across experiments. Is this a reasonable approach for this particular data? Why or why not? Suppose this is not reasonable, can you suggest an alternative approach?
+
+```{r}
+Increase <- c(4.9,5.3,2.5,0.9,3.2,2.6,10.7,1.1,14.7,-0.3,1.7,5.7,13.8,14.4,4,-1.1,5.3,0.1,7.4,5.3,7.8,8.2,11.1,3.3,5.1,5.9,8.4,1.9,0.5,8.3,4.2,11.8,3.4,-2.5,6.1,5.7,1.8,3.5,13.8,26.0,-0.1,3.9,9.9,6.0,-1.5,6.1,2.3,-0.2,11.2,3.5,6.2,12.3,8.3,10.1,-1.8,9.2,0.1,7.6,7.8)
+shapiro.test(Increase)
+wilcox.test(Increase, alternative = "greater")
+```
+Combine all five experiments results. Shapiro test shows the data are not normally distributed. So use Wilcoxon test and get p-value 2.259e-10. It can be concluded that the treatment animals have significantly heavier cortex weights than control animals. If we want to compare the five experiments seperately, we can use one-way ANOVA test alternatively.
+
+***
+
+###3. Apply the permutation test with statistic t = x - y to Example A, where x and y respectively refer to measurements with and without honey. Construct boostrap confidence intervals for the difference of population means.
+
+```{r}
+d <- Honey - No_Honey
+t <- mean(Honey) - mean(No_Honey)
+n <- length(d)
+d.perm <- matrix(abs(d), n, 1000)
+d.perm <- d.perm * sign(runif(1000*n) - 0.5)
+d.bar <- apply(d.perm, 2, mean)
+mean(d.bar < mean(d)) 
+boot.smp1 <- matrix(d, n, 1000)
+boot.smp1 <- apply(boot.smp1, 2, sample, r = TRUE)
+boot.m <- apply(boot.smp1, 2, mean)
+var(boot.m) 
+quantile(boot.m, c(0.0025,0.0975)) 
+```
+The boostrap confidence intervals for the difference of population means is [4.500000, 6.333333]
+
+***
+
+###4. Apply the permutation test with statistic t = x - y to Example D, where x and y respectively refer to measurements for the oxygen gel and placebo gel groups. Construct boostrap confidence intervals for the difference of population means.
+
+```{r}
+t <- mean(Oxygen_Gel) - mean(Placebo_Gel)
+combined <- c(Oxygen_Gel, Placebo_Gel)
+nsim <- 1000
+diff.random <- NULL
+for (i in 1:nsim) {
+  shaffled <- sample(combined, length(combined))
+  a.random = shaffled[1:length(Oxygen_Gel)]
+  b.random = shaffled[length(Oxygen_Gel) + 1:length(combined)]
+  diff.random[i] = mean(a.random) - mean(b.random)
+}
+mean(diff.random < t)
+boot.smp1 <- matrix(Oxygen_Gel, length(Oxygen_Gel), 1000)
+boot.smp2 <- matrix(Placebo_Gel, length(Placebo_Gel), 1000)
+boot.smp1 <- apply(boot.smp1, 2, sample, r = TRUE)
+boot.smp2 <- apply(boot.smp2, 2, sample, r = TRUE)
+boot.m1 <- apply(boot.smp1, 2, mean)
+boot.m2 <- apply(boot.smp2, 2, mean)
+var(boot.m1)
+var(boot.m2)
+quantile(boot.m1, c(0.0025,0.0975))
+quantile(boot.m2, c(0.0025,0.0975))
+```
+
+
+***
+
+###5. Discuss pros and cons between t and Wilcoxon tests. Conduct simulations to check your claims. Specifically, modify the simulation code I used in class to check the robustness of t test to departure from the normality assumption by generating sample from non-Gaussian distributions and compare powers of the t and Wilcoxon tests in these situations.
+
+Answer:
+</br>
+
+**T-test** is a parametric test method used for normal distributed sample. 
+</br>
+
+*Pro*: when sample size is large and samples are normally distributed, t-test is very useful.
+</br>
+
+*Cons*: T-test is less powerful when sample size is small or the distribution is not normal.
+</br>
+
+**Wilcoxon test** is a non-parametric test method.
+</br>
+
+*Pros*: it can be applied to non-normal distributed sample as well as normal distributed sample. 
+</br>
+
+*Cons*: it is difficult for Wilcoxon test to quantify the difference between samples, e.g. cofidence interval. It only tells us whether there is a significant difference between two samples.
+
+Simulation to compare the power of two tests:
+```{r}
+par(mfrow = c(1,2), main = "Power comparison of T-test and Wiscoxon test")
+
+# Sample size = 10
+n <- 10
+nsim <- 1000
+d <- seq(0, 2, len = 10)
+pt <- pw <- matrix(NA, n, nsim)
+d <- seq(1, 2, len=10)
+for (j in 1:10) {
+  for (i in 1:nsim) {
+    y = rexp(n, rate = d[j])
+    pt[j,i] <- t.test(y-1)$p.value
+    pw[j,i] <- wilcox.test(y-1)$p.value
+  }
+}
+powert <- apply(pt < 0.05, 1, mean)
+powerw <- apply(pw < 0.05, 1, mean)
+
+print(rbind(powert, powerw))
+plot(powert ~ d, col = "red", pch = 1, xlab = "d", ylab = "Power", ylim = c(0, 1.0))
+lines(d, powert, col = "red", type = "b")
+points(powerw ~ d, col = "blue", pch = 2)
+lines(d, powerw, col = "blue", type = "c")
+legend("bottomright", pch = 1:2, col = c("red","blue"), legend = c( "T-test", "Wilcoxon test"))
+legend("topleft", legend = "n = 10")
+
+# Sample size = 30
+for (j in 1:n) {
+  for (i in 1:nsim) {
+    y = rexp(30, rate = d[j])
+    pt[j,i] <- t.test(y-1)$p.value
+    pw[j,i] <- wilcox.test(y-1)$p.value
+  }
+}
+powert <- apply(pt < 0.05, 1, mean)
+powerw <- apply(pw < 0.05, 1, mean)
+
+print(rbind(powert, powerw))
+plot(powert ~ d, col = "red", pch = 1, xlab = "d", ylab = "Power", ylim = c(0, 1.0))
+lines(d, powert, col = "red", type = "b")
+points(powerw ~ d, col = "blue", pch = 2)
+lines(d, powerw, col = "blue", type = "c")
+legend("bottomright", pch = 1:2, col = c("red","blue"), legend =c( "T-test", "Wilcoxon test"))
+legend("topleft", legend = "n = 30")
+```
+</br>
+
+T-test performs slightly better than Wilcoxon test when sample size is small. Wilcoxon test performs better when the sample size is larger.
+
+***
+
+###6. Write a R function for Z-test that compares the proportions from two independent groups. Include an option so that the user can specify one-sided or two-sided alternative hypothesis. Also include an option so that the user can specify the confidence level for confidence intervals. Output Z-statistic, p-value, estimates of proportion for each group, estimate of the difference and confidence intervals. Apply this function to Florida death penalty data.
+
+```{r}
+Z_test <- function(p1, p2, n1, n2, side = "two.sided", interval = 0.9) {
+  p = (p1 + p2)/(n1 + n2)
+  se = sqrt(p * (1-p) * (1/n1 + 1/n2))
+  z = (p1/n1 - p2/n2)/se
+  if (side == "two.sided") {
+   nl = qnorm((1 - interval)/2, 0, 1)
+   nh = qnorm(1/2 + interval/2, 0, 1)
+}
+  else if (side == "less") {
+    nl = qnorm(1 - interval, 0, 1)
+    nh = Inf
+  }
+  else if (side == "greater") {
+    nl = -Inf
+    nh = qnorm(interval, 0, 1)
+  }
+  if (z > 0) {
+    pvalue = 1 - pnorm(z, 0, 1)
+  }
+  else {
+    pvalue = pnorm(z, 0, 1)
+  }
+  if (z > nl && z < nh){
+    print("Fail to reject the null hypothesis.")
+  }
+  else{
+    print("Reject the null hypothesis.")
+  }
+  if (side == "two.sided"){
+     print("Z-statistic two-sided test")
+  }
+  else if (side =="less"){
+    print("Z-statistic one-side test, less than")
+  }
+  else if ( side =="greater"){
+    print("Z-statistic one-side test, greater than")
+  }
+  str = sprintf("Z = %f", z); print(str)
+  str = sprintf("P-value = %f", pvalue); print(str)
+  str = sprintf("Estimated P1 = %f, Estimated P2 = %f", p1/n1, p2/n2); print(str)
+  str = sprintf("P1-P2 = %f", p1/n1 - p2/n2); print(str)
+  str = sprintf("The %.2f percentage confidence interval is: [%s %s]",interval * 100, nl, nh); print(str)
+}
+
+# Apply this Z test function to Florida death penalty data
+Z_test(19, 17, 160, 166, side = "two.sided", interval = 0.95) 
+```
+
+***
+
+###7. Write a R function for goodness-of-fit tests when category probabilities are completely specified. Applies your function to the linkage study of the tomato and the hour of birth examples.
+
+```{r}
+gof <- function(O, P) {
+  chi2 = 0;
+  for (i in 1:length(O)){
+    chi2 = chi2 + (O[i] - sum(O)*P[i])^2/sum(O)/P[i]
+  }
+  df = length(O) - 1
+  res = 1 - pchisq(chi2, df)
+  if (res > 0.05) {
+    print("Fail to reject null hypothesis")}
+  else {
+    print("Reject null hypothesis")
+  }
+}
+
+# Linkage study of the tomato
+O1 <- c(926, 288, 293, 104)
+P1 <- c(9, 3, 3, 1)/16
+gof(O1, P1)
+
+# Hour of birth
+O2 <- c(52,73,89,88,68,47,58,47,48,53,47,34,21,31,40,24,37,31,47,34,36,44,78,59)
+P2 <- rep(1,24)/24
+gof(O2, P2)
+```
+
+***
+
+###8. Each individual in a random sample of high school and college students was cross- classified with respect to both political views and marijuana usage, resulting in the data displayed below:
+
+   Political Views | Never | Rarely | Frequently
+   --------------- | ----- | ------ | -----------
+   Liberal         | 479   | 173    | 119
+   Conservative    | 214   | 47     | 15
+   Other           | 172   | 45     | 85
+
+**Does the data support the hypothesis that political views and marijuana usage level are independent within the population?**
+
+```{r}
+marijuana <- matrix(c(479,173,119,214,47,15,172,45,85), 3, 3)
+chisq.test(marijuana) 
+```
+The p-value of Chi-squared test is 3.043e-13, so we can reject the null hyposis and come to conclusion that the political views and marijuana usage is not independent within the population.
+
+***
+
+###9. A certain type of flashlight is sold with the four batteries included. A random sample of 150 flashlights is obtained and the number of defective batteries in each is determined, resulting in the following table:
+     |Number defective | 0    | 1    | 2    | 3    | 4    |
+     | --------------- | ---- | ---- | ---- | ---- | ---- |
+     |Frequency        | 26   | 51   | 47   | 16   | 10   | 
+
+**Let X be the number of defective batteries in a randomly selected flashlight. Test the hypothesis that the distribution of X is Binomial.**
+
+```{r}
+battery <- c(26,51,47,16,10)
+theta <- (26*0+51*1+47*2+16*3+10*4)/4/(sum(battery))
+E <- sum(battery) * c((1-theta)^4, 4 * theta * (1-theta)^3, 6 * theta^2 * (1-theta)^2, 4 * theta^3 * (1-theta), theta^4)
+X <- sum((battery - E)^2/E) 
+1 - pchisq(X, 5-1-1)
+```
+Since the p-value is 0.001303828, the null hypothesis is rejected and that the X distribution is not Binomial.
+
+***
+
+###10. Each of 325 individuals participating in a certain drug program was categorized both with respect to the presence or absence of hypoglycemia and with respect to mean daily dosage of insulin:
+  |hypoglycemia | <.25 | .25-.49 | .50-.74 | .75-.99 | >=1.0 |
+  |------------ |:----:|:-------:|:-------:|:-------:| -----:|
+  |present      | 4    | 21      | 28      | 15      | 12    |
+  |absent       | 40   | 74      | 59      | 26      | 46    |
+
+**Does the data support the claim that the presence/absence of hypoglycemia is independent of insulin dosage?**
+
+```{r}
+insulin <- matrix(c(4,21,28,15,12,40,74,59,26,46), 2, 5)
+chisq.test(insulin)
+```
+The p-value generated by Chi-squared test is 7.301e-07, so we conclude that the presence/absence of hypoglycemia is not independent of insulin dosage.
+
+
+
+
+

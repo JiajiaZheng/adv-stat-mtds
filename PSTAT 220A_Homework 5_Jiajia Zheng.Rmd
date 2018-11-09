@@ -1,0 +1,714 @@
+---
+title: "PSTAT 220A_Homework 5"
+author: "Jiajia Zheng"
+date: "11/24/2017"
+output:
+  pdf_document: 
+    latex_engine: xelatex
+  html_document: default
+  word_document: default
+---
+
+**1. (More for the divusa problem) Ignore possible correlation in this question. Select the best model using:**
+
+</br>
+
+**(1) p-values**
+```{r}
+library(faraway)
+fit1 <- lm(divorce ~., data = divusa)
+summary(fit1)
+```
+First, try fitting the model with all six covariates in *fit1*. The p-values of the covariates are all significant except for *unemployed* (p-value = 0.36). Therefore try fitting another model in the following without this particular covariate.
+
+```{r}
+fit2 <- update(fit1, .~.-unemployed)
+summary(fit2)
+```
+
+</br>
+
+From the summary of the new model *fit2*, we can see that all the five variables are significant now with very small p-values. And the overall p-value of this model is very small too. The model can explain 93.36% of the variation of the observations, which is similar to model *fit1*. It is a better model since it has fewer covariates and it fits equally good. Therefore, the fitted model is: $divorce = 405.62 - 0.22 * year + 0.85 * femlab + 0.16 * marriage - 0.11 * birth - 0.04 * military$.
+
+</br>
+
+**(2) AIC (forward, backward and both directions)**
+```{r}
+step(lm(divorce ~ 1, data = divusa), scope = list(upper = formula(fit1)),
+     direction = "forward")
+```
+
+</br>
+
+We get the smallest AIC with five variables, i.e. divorce ~ femlab + birth + marriage + year + military using forward direction of step function. Now try backward direction.
+
+```{r}
+step(fit1, direction = "backward")
+```
+Again, we get smallest AIC value using five varibales except *unemployed*. Now let's try both directions.
+```{r}
+step(fit1, direction = "both")
+```
+The result is aligned with previous ones using sided direction; we get the smallest AIC with five variables. The model fitted is same with what we got in question (1). i.e. $divorce = 405.62 - 0.22 * year + 0.85 * femlab + 0.16 * marriage - 0.11 * birth - 0.04 * military$.
+
+</br>
+
+**(3) adjusted R2 **
+```{r}
+library(leaps)
+a <- regsubsets(formula(fit1), data = divusa,
+                method = "exhaustive")
+(rs <- summary(a))
+plot(2:7, rs$adjr2, xlab = "Number of parameters",
+     ylab = "Adjusted R-square",
+     main = "Adjusted R-square")
+```
+
+</br>
+
+According to the plot of adjusted R-square, the model with 6 parameters performs almost as well as the model with all 7 parameters (including intercept). So the best model is divorce ~ femlab + birth + marriage + year + military, which is aligned with the results considering either p-values or AIC in question (1) and (2). 
+
+</br>
+
+**(4) Mallows Cp**
+```{r}
+plot(2:7, rs$cp, xlab = "Number of parameters",
+     ylab = "Cp statistic")
+abline(0,1)
+```
+
+</br>
+
+According to Mallows Cp, the best model is the model with smallest number of parameters and closest to the diagonal line. From the Cp plot, we can see that the best model is the model with 6 parameters, which is alighed with previous results based on p-values, AIC, and ajusted R-square. 
+
+</br>
+
+**(5) cross-validation**
+```{r}
+library(boot)
+
+# leave-one-out CV
+cv.glm(divusa, glm(divorce ~., data = divusa))$delta
+cv.glm(divusa, glm(divorce ~. -unemployed, data = divusa))$delta
+
+# 10-fold CV
+cv.glm(divusa, glm(divorce ~., data = divusa), K = 10)$delta
+
+# 10-fold CV to select the model
+attach(divusa)
+X <- model.matrix(fit1)
+fold <- sample(rep(1:10,5)) 
+pse.cv <- matrix(NA,6,10)
+for (i in 1:6) {
+  for (j in 1:10) {
+    tmp <- lm(divorce~X[,rs$which[i,]]-1, subset=fold!=j) 
+    pred <- X[fold==j,rs$which[i,]]%*%coef(tmp) 
+    pse.cv[i,j] <- mean((divorce[fold==j]-pred)^2)
+}}
+plot(2:7, apply(pse.cv, 1, mean), xlab = "Number of parameters",
+     ylab = "CV estimates of prediction errors")
+
+```
+
+</br>
+
+From the above cross-validation plot, we can tell that 6 parameters is the best choice. This is also aligned with previous results.
+
+</br>
+
+**(6) LASSO**
+```{r}
+library(glmnet)
+library(faraway)
+set.seed(294)
+X <- model.matrix(fit1)[,-1]
+fit.lasso <- glmnet(X, divorce, lambda.min=0, nlambda=101, alpha=1)
+
+plot(fit.lasso, xvar="lambda", xlim=c(-7,0))
+text(-6,coef(fit.lasso)[-1,length(fit.lasso$lambda)],labels=colnames(X),cex=0.6) 
+fit.lasso.cv <- cv.glmnet(X, divorce, lambda.min=0, nlambda=101)
+abline(v=log(fit.lasso.cv$lambda.min), col="red")
+mtext("CV estimate", side=1, at=log(fit.lasso.cv$lambda.min), cex=.6)
+
+plot(fit.lasso.cv)
+```
+
+</br>
+
+The above LASSO plots also show that the best model is which consists six parameters. It is aligned with previous results.
+
+</br>
+
+**2. Find a good model for the prostate data in faraway library with lpsa as the response variable and the other variables as covariates. Include diagnostics for your model.**
+
+```{r}
+library(faraway)
+summary(prostate)
+fit2.1 <- lm(lpsa ~ lcavol + lweight + age + lbph + svi + 
+             lcp + gleason + pgg45, data = prostate)
+step(fit2.1, direction = "both")
+```
+By applying step function, five covariates are chosen (lcavol + lweight + age + lbph + svi). Then try fitting another model with them.
+
+```{r}
+library(leaps)
+a <- regsubsets(formula(fit2.1), data = prostate,
+                method = "exhaustive")
+(rs <- summary(a))
+par(mfrow=c(1,2))
+plot(2:9, rs$adjr2, xlab="Number of parameters",
+     ylab="Adjusted R-square",
+     main="Adjusted R-square")
+plot(2:9, rs$cp, xlab="Number of parameters",
+     ylab="Cp statistic",
+     main="Cp statistic")
+abline(0,1)
+```
+
+</br>
+
+According to the plot of ajusted R-square and Mallow's Cp, six parameters is an ideal choice for the best model.
+
+```{r}
+fit2.2 <- lm(lpsa ~ lcavol + lweight + age + lbph + svi, data = prostate)
+summary(fit2.2)
+```
+Although the overall model is significant, there are parameters which are not. So try fitting without the insignificant parameter *age*.
+
+```{r}
+fit2.3 <- update(fit2.2, .~. -age)
+summary(fit2.3)
+```
+Still, the parameter *lbph* is insignificant. Try fitting without it next.
+
+```{r}
+fit2.4 <- lm(lpsa ~ lcavol + lweight + svi, data = prostate)
+summary(fit2.4)
+```
+Now all the covariates are significant. Conduct diagnostics in the following.
+
+```{r}
+library(boot)
+fit2.4_glm <- glm(lpsa ~ lcavol + lweight + svi, data = prostate)
+glm.diag.plots(fit2.4_glm)
+```
+
+</br>
+
+From the diagnostics plot above, we can tell that the assumptions hold true for this model (fit2.4), i.e. normality and equal variance. Although its R-square value 0.6144 is a little bit lower than the model with five covariates, it is simpler and almost equally effective. Therefore, I conclude that the best model for this question is $lpsa = -0.27 + 0.55*lcavol + 0.51*lweight + 0.67*svi$.
+
+</br>
+
+**3. Measurements were made of poverty, unemployment, and murder rates for 20 US cities. They include the following variables:**
+
+</br>
+x1: the inhabitants
+
+</br>
+
+x2: the percentage of families incomes below $5000 
+
+</br>
+
+x3: the percentage unemployed
+
+</br>
+
+y: the number of murders per 1,000,000 inhabitants per annum
+
+          x1     x2    x3   y
+      --------------------------
+        587000  16.5  6.2  11.2
+        643000  20.5  6.4  13.4
+        635000  26.3  9.3  40.7
+        692000  16.5  5.3   5.3
+       1248000  19.2  7.3  24.8
+        643000  16.5  5.9  12.7
+       1964000  20.2  6.4  20.9
+       1531000  21.3  7.6  35.7
+        713000  17.2  4.9   8.7
+        749000  14.3  6.4   9.6
+       7895000  18.1  6.0  14.5
+        762000  23.1  7.4  26.9
+       2793000  19.1  5.8  15.7
+        741000  24.7  8.6  36.2
+        625000  18.6  6.5  18.1
+        854000  24.9  8.3  28.9
+        716000  17.9  6.7  14.9
+        921000  22.4  8.6  25.8
+        595000  20.2  8.4  21.7
+       3353000  16.9  6.7  25.7
+     ------------------------------
+**(a) Investigate how murder rates depends on poverty and unemployment. **
+```{r}
+cities <- read.table("cities.txt", header = T)
+fit3.1 <- lm(y ~ x1 + x2 + x3, data = cities)
+summary(fit3.1)
+```
+The variable x1 is insignificant. So try fitting without this variable next.
+
+```{r}
+fit3.2 <- lm(y ~ x2 + x3, data = cities)
+summary(fit3.2)
+```
+The fitted model is $y = -34.07 + 1.22 * x2  + 4.40 * x3$. With 1 percent of more low income family (less than $5000), the murder rate will rise by 1.22 percents, and with 1 percent higher unemployment rate, the murder rate will rise by 4.40 percents. Then we use this model to predict the murder rate in Santa Barbara city.
+
+</br>
+
+**(b) Suppose that Santa Barbara has 150,000 inhabitants, 10% of families incomes below $5000 and 9% unemployed (all made up), what is your prediction of the murder rate for Santa Barbara?**
+```{r}
+q <- summary(fit3.2)
+grid3 = data.frame(x2 = 10, x3 = 9)
+p2 = predict(fit3.2, newdata = grid3, se = T, interval = "prediction")
+p3 = predict(fit3.2, newdata = grid3, se = T, interval = "confidence")
+p2$fit
+p3$fit
+```
+The prediction of the average murder rate for Santa Barbara city with 10% of families incomes below $5000 and 9% unemployed rate is about 17.76 murders per 1,000,000 inhabitants. The confidence interval for “prediction” method is about [-2.43, 37.94], and the confidence interval for “confidence” method is about [0.12, 35.40].
+
+</br>
+
+**4. A random sample from records of single births was selected from each of four population areas of interest. The weight (in grams) of the selected babies is given below:**
+
+ Midwest Rural| Midwest Urban| South Rural| South Urban
+ -------------|--------------|------------|-----------
+    2582      |    3347      |    2572    |    2952
+    2946      |    3099      |    2571    |    2348
+    2280      |    3186      |    2300    |    2286
+    2913      |    2857      |    2584    |    2691
+    2310      |    2937      |            |    2938
+
+**The researcher is interested in the following questions:**
+
+</br>
+
+**(a) whether or not the data provide any evidence suggesting that mean birth-weights differ among the four population areas;**
+```{r}
+birth <- read.csv("hw5_4.csv", header = T)
+fit4.1 <- aov(weight ~ factor(area), data = birth)
+summary(fit4.1)
+```
+
+</br>
+
+Our null hypothesis H0 is that the means of birth weight in all areas are same; the alternative hypothesis is that not all means are equal. So we need to conduct a one-way ANOVA to the data. Notate: 1-Midwest Rural; 2-Midwest Urban; 3-South Rural; 4- South Urban. Then fit a model called fit4.1. From the above summary table, we can see that the p-value is 0.0172 (< 0.05), so we conclude that the null hypothesis is rejected and that not all means of birh weight among different areas are equal.
+
+</br>
+
+**(b) If they differ, how these four areas compare to each other.**
+```{r}
+plot(TukeyHSD(fit4.1))
+```
+
+</br>
+
+From the above plot, we can see that 95% family wise confidence level for 2-1 and 3-2 doesn’t contain zero, which means that area 2 (Midwest urban) is significantly different from area 1 (Midwest rural) and area 3 (South rural).
+
+</br>
+
+**(c) Suppose that the investigator had prior interest in the following two comparisons: Rural vs. Urban, and Midwest vs. South. Construct confidence intervals for each comparison using an appropriate multiple comparison technique. Explain the reasons behind your choice of technique, and summarize your findings.**
+```{r}
+birth2 <- read.csv("hw5_4_2.csv", header = T)
+fit4.2 <- lm(weight ~ factor(part) + factor(rural), data = birth2)
+summary(fit4.2)
+
+confint(fit4.2)[2:3,]
+```
+Conduct a two-way ANOVA. Notate: A-Midwest; B-South; 1-Rural; 2-Urban. The overall model is significant with p-value 0.014, according to the summary of model fit4.2 above. Moreover, the coefficient of factor part B and factor rural 2 are also significant with p-value less than 0.05, which means that the means are significantly different for part variables (Midwest and South) and rural variables (Rural and Urban). Then apply Bonferroni method to construct the 95% confidence interval because of the assumption that the investigator had prior interest without data collection. Also, it is not all-pairwise comparison between the two factors. The 95% confidence interval for the birth weight difference between south and midwest is [-542.65, -19.16]; between urban and rural is [55.96, 579.45].
+
+</br>
+
+**(d) Suppose that the investigator raise his interest in (c) after looking at the data. What method will you use and how do you explain to the researcher?**
+```{r}
+attach(birth2)
+se.part <- sqrt(vcov(fit4.2)[2,2])
+se.rural <- sqrt(vcov(fit4.2)[3,3])
+part.ci <- c(fit4.2$coef[2] - sqrt(3*qf(0.95,3, length(weight) - 3))*se.part,
+             fit4.2$coef[2] + sqrt(3*qf(0.95,3, length(weight) - 3))*se.part)
+rural.ci <- c(fit4.2$coef[3] - sqrt(3*qf(0.95, 3, length(weight) - 3))*se.rural, 
+              fit4.2$coef[3] + sqrt(3*qf(0.95, 3, length(weight) - 3))*se.rural)
+rbind(part.ci, rural.ci)
+```
+If the investigator raise his interest in (c) after looking at the data, I would suggest using Scheffe method to construct the confidence interval. Because it is very conservative and it controls family-wise error rate for all possible linear combinations. From Scheffe method, the 95% confidence intervals for the birth weight difference between south and midwest is [-665.78, 103.94], and between urban and rural is [-67.17, 702.58]. Those intervals include 0, which indicates that the difference between south and Midwest and the difference between rural and urban may not be significant.
+
+</br>
+
+**5. You are given the following data from a study of the survival times (in tenth of an hour) of animals randomly allocated to three poisons and four treatments; the purpose of the study (in part) was to look at the effects of various treatments in combating certain toxic agents.**
+
+Poison | B1 B2 B3 B4
+-------|--------------
+   A1  | 31 82 43 45 
+       | 45 110 45 71 
+       | 46 88 63 66
+       | 43 72 76 62
+-------|--------------
+   A2  | 36 92 44 56 
+       | 29 61 35 102 
+       | 40 49 31 71 
+       | 23 124 40 38
+-------|--------------
+   A3  | 22 30 23 30 
+       | 21 37 25 36 
+       | 18 38 24 31 
+       | 23 29 22 33
+
+</br>
+
+**(a) Give an appropriate model for this data, including the model assumptions. Interpret each and every element in terms of the problem.**
+```{r}
+treat <- read.csv("hw5_5.csv", header = T)
+treatment <- as.factor(treat$treatment)
+poison <- as.factor(treat$poison)
+fit5.1 <- lm(survive ~ factor(treatment) + factor(poison), data = treat)
+summary(fit5.1)
+```
+The model is a two-way ANOVA model with two factors, treatment and poison.
+
+</br>
+
+Survive times ~ u + treatment~i~ + Poison~j~ + treatment * Poison + error
+
+</br>
+
+error ~ (0, sigma{2}), i = 1,2,3,4; j = 1,2,3 
+
+</br>
+
+1. Survive times: the observations at level i of treatment and level j of poison
+2. u: overall mean
+3. Treatment (i): main effect of treatment 
+4. Poison (j): main effect of poison
+5. Treatment * Poison: interaction between treatment and poison. 
+
+</br>
+
+**(b) Construct and examine a plot of s~i~~j~ vs. Ȳ·~i~~j~. Does the graph suggest non-constant variance as a function of treatment means?**
+```{r}
+mean <- tapply(treat$survive, list(treatment, poison), mean)
+var <- tapply(treat$survive, list(treatment, poison), var)
+sd <- sqrt(var)
+plot(mean, sd, xlab = "Means of survival times",
+     ylab = "Standard deviation of survial times")
+```
+
+</br>
+
+There is an increasing linear pattern exists in the plot of the means of survival time and standard deviations of survival time for different poisons and treatments. It does suggest non-constant variance as a function of treatment means.
+
+</br>
+
+**(c) Using the regression method of estimating transformations (i.e. fitting log s~i~~j~ = log c + γ log Ȳ~i~~j~·), determine whether a transformation seems necessary. Do these results concur with the graph you constructed? What transformation does the Box-Cox method suggest? Use a transformation for the remaining questions if necessary.**
+```{r}
+mean.vec <- c(mean)
+sd.vec <- c(sd)
+library(boot)
+fit5.2 <- glm(sd.vec ~ mean.vec)
+fit5.2 <- lm(sd.vec ~ mean.vec)
+summary(fit5.2)
+```
+The model fit5.2 was constructed with original data points, with standard deviation values as response variable and mean values as predicting variable. From the summary table we can see that the overall model is significant (p-value = 0.011) and the model can explain 49% of the total variation. Then conduct diagnostic plots to the model in the following.
+
+```{r}
+par(mfrow = c(2,2), cex = 0.5)
+qqnorm(fit5.2$residuals)
+qqline(fit5.2$residuals)
+plot(fit5.2$fitted, fit5.2$residuals, main = "Residuals")
+plot(fit5.2$fitted, abs(fit5.2$residuals), main = "Absolute residuals")
+```
+
+</br>
+
+The diagnostic graphs show that the assumptions of normality and constant variance are violated. So there is a need for transformation. Try log transformation next.
+
+```{r}
+# log transformation
+fit5.3 <- lm(log(sd.vec) ~ log(mean.vec))
+summary(fit5.3)
+fit5.3 <- glm(log(sd.vec) ~ log(mean.vec))
+par(oma = c(0, 0, 3, 0))
+glm.diag.plots(fit5.3)
+mtext("Diagnostic Plots for fit5.3", cex = 1.5, outer = T)
+```
+
+</br>
+
+The model fit5.3 is constructed by using log transformed data points. The overall model is significant with a p-value equals to 0.0003 and the model can explain 74.54% of the total variation, which is much better than model fit5.2. The above diagnostic plots indicate that the normality assumption holds but the constant variance assumption is slightly violated. Therefore they Box-cox transformation next.
+
+```{r}
+# Box-Cox transformation
+library(MASS)
+bc <- boxcox(fit5.2, plotit = T)
+bc$x[which.max(bc$y)]
+fit5.4 <- lm(sd.vec^(-0.1) ~ mean.vec)
+summary(fit5.4)
+fit5.4 <- glm(sd.vec^(-0.1) ~ mean.vec)
+par(oma = c(0, 0, 3, 0))
+glm.diag.plots(fit5.4)
+mtext("Diagnostic Plots for fit5.4", cex = 1.5, outer = T)
+```
+
+</br>
+
+The model fit5.4 was constructed based on box-cox transformation (the most log-likelihood of lambda is -0.1). The overall model is significant with a p-value equals to 0.0067 and the model can explain 70.18% of the total variation, which is less than the fit5.3 (R-square = 74.54%). Additionally, the diagnostic plots for fit5.4 show that neither normality or constant variance assumptions are better met than fit5.3. So in all the log transformed model fit 5.3 does a better job.
+
+</br>
+
+**(d) Construct and examine an interaction plot of the treatment means. Does your graph suggest that any factor effects are present? Explain.**
+```{r}
+treatment.group <- rep(1:4,3)
+poison.group <- c("A1","A1","A1","A1","A2","A2","A2","A2","A3","A3","A3","A3")
+interaction.plot(poison.group, treatment.group, mean.vec,
+                 main = "Interaction Plot",
+                 col = c("black","red","blue","green"))
+```
+
+</br>
+
+The nonparallel lines in the above interaction plot confirm interaction conditions. For example, there are interactions between treatment group 3 and 1, as well as group 3 and 4.
+
+</br>
+
+**(e) Obtain the ANOVA table.**
+```{r}
+fit5.5 <- lm(log(survive) ~ treatment * poison, data = treat)
+summary(fit5.5)
+anova(fit5.5)
+```
+The summary table and ANOVA table of the treatment mean with response variable under log transformation are presented above.
+
+</br>
+
+**(f) State the appropriate hypothesis for testing whether interaction is present. Provide the test statistic, its distribution under the null hypothesis, and the p-value. What is your conclusion? Given this conclusion, is it appropriate to test and interpret the main effects of poison and treatment? Explain.**
+
+Null hypothesis: (poison * treatment)~i~,~j~ = 0 (i = 1, 2, 3; j = 1, 2, 3, 4)
+
+</br>
+
+Alternative hypothesis: (poison * treatment)~i~,~j~ = 0 (i = 1, 2, 3; j = 1, 2, 3, 4)
+
+</br>
+
+Test statistic: under the null hypothesis, F = MSAB/MSE ~ F ~(6,36)~
+
+</br>
+
+From the ANOVA table, the p-value of F test statistic is 0.9319 (>0.05), so we cannot reject the null hypothesis and conclude that there is no interaction term in the model at 0.05 significance level. Therefore, it is appropriate to test and interpret the main effects of poison and treatment, and they are quite independent to each other. In conclusion, the main effects of poison and treatment are the only effect influencing the survival time. 
+
+</br>
+
+**(g) For each main effect, state and test the appropriate null hypothesis against the alternative. For each test, provide the test statistic, its distribution under the null hypothesis, and the p-value. Interpret your results.**
+
+Null hypothesis: 
+poison~i~ = 0 (i = 1, 2, 3); treatment~j~ = 0 (j = 1, 2, 3, 4)
+
+</br>
+
+Alternative hypothesis:
+poison~i~ != 0 (i = 1, 2, 3); treatment~j~ != 0 (j = 1, 2, 3, 4)
+
+</br>
+
+Test statistic: under the null hypothesis,
+
+</br>
+
+F = MSA/MSE ~ F ~(2,36)~
+F = MSB/MSE ~ F ~(3,36)~
+
+The p-value for F test statistic of poison is very small (6.318e-06), so reject the null hypothesis and conclude that poison type has a significant effect on the survival time. The p-value for F test statistic of treatment is 0.9187 (> 0.05), hence we fail to reject the null hypothesis. Therefore, treatment has no significant effect but poison has significant effect on the survival time at 0.05 significance level. 
+
+</br>
+
+**6. To find how earning per course (in thousand dollars) depends on subject matter of a course (Humanities, Social sciences, Engineering and Management) and highest degree earned of a teacher (Bachelor, Master and Doctorate), a random sample of 45 adjunct professors who teach in the evening division of a large metropolitan university is given below:**
+                 |Bachelor| Master |Doctorate
+-----------------|--------|--------|----------
+      Humanities |   1.7  |   1.8  |  2.5
+                 |   1.9  |   2.1  |  2.7
+                 |        |        |  2.9
+                 |        |        |  2.5
+                 |        |        |  2.6
+                 |        |        |  2.8
+                 |        |        |  2.7
+                 |        |        |  2.9                  
+-----------------|--------|--------|-----------                 
+ Social sciences |   2.5  |   2.7  |  3.5
+                 |   2.3  |   2.4  |  3.3
+                 |   2.6  |   2.6  |  3.6
+                 |   2.4  |   2.4  |  3.4
+                 |        |   2.5  |
+-----------------|--------|--------|-----------
+     Engineering |   2.7  |   2.9  |  3.7
+                 |   2.8  |   3.0  |  3.6
+                 |        |   2.8  |  3.7
+                 |        |   2.7  |  3.8
+                 |        |        |  3.9
+-----------------|--------|--------|-----------
+      Management |   2.5  |   2.3  |  3.3
+                 |   2.6  |   2.8  |  3.4
+                 |        |        |  3.3
+                 |        |        |  3.5
+                 |        |        |  3.6
+
+</br>
+
+**(a) State the ANOVA model. Present the model in matrix forms under both sum-to-zero and set-to-zero conditions.**
+```{r}
+sum_to_zero <- read.csv("hw5_6_sumtozero.csv")
+set_to_zero <- read.csv("hw5_6_settozero.csv")
+sum_to_zero
+set_to_zero
+```
+This is a two-way ANOVA with two factors, course subject and degree. The ANOVA model is as following:
+
+</br>
+
+Earning = u + course~i~ + degree~j~ + course*degree + error
+
+</br>
+
+error ~ N (0, sigma{2}); i = 1,2,3,4; j = 1,2,3
+
+</br>
+
+Where course 1,2,3,4 are Humanities, Social Science, Engineering, Management, respectively, and degree 1,2,3 are Bachelor, Master, Doctorate, respectively. The design matrix under set-to-zero and sum-to-zero conditions is as above table.
+
+</br>
+
+**(b) Use graphical methods and an appropriate ANOVA table to examine the data for evidence of interaction between subject matter and highest degree.**
+
+```{r}
+interaction.plot(set_to_zero$course, set_to_zero$degree, set_to_zero$earning,
+                 main = "Interaction Plot",
+                 col = c("black","red","blue","green"),
+                 xlab = "Course",
+                 ylab = "Earning",
+                 trace.label = "Degree")
+fit6.1 <- lm(earning ~ as.factor(course) * as.factor(degree), data = set_to_zero)
+anova(fit6.1)
+```
+
+</br>
+
+There is no crossing of lines in above interaction plot. So there is no obvious interaction between subject matter and highest degree. Also, the p-value in ANOVA summary table is 0.9104, so we fail to conclude that there is interaction between the two factors.
+
+</br>
+
+**(c) Fit your model and check your model using appropriate plots.**
+```{r}
+fit6.2 <- lm(earning ~ as.factor(course) + as.factor(degree), data = set_to_zero)
+anova(fit6.2)
+summary(fit6.2)
+```
+The summary table of the fitted model fit6.2 is presented above. The overall model is significant with a very small p-value (<2.2e-16). The model can explain more than 94% of the total variance. Diagnostic plots are presented in the following.
+
+```{r}
+library(boot)
+glm.diag.plots(glm(earning ~ as.factor(course) + as.factor(degree), data = set_to_zero))
+```
+
+</br>
+
+From the residuals and qqplot, we can tell that the assumptions of normality and equal variance are met. There are three influential data points according to Cook's distance plot.
+
+</br>
+
+**(d) Are pairwise comparisons between the subject matter means appropriate? If yes, make all pairwise comparisons using an appropriate method to guarantee a 95% simultaneous confidence coefficient. State your findings and present a graphic summary. Repeat above for the factor of highest degree.**
+```{r}
+fit6.3 <- aov(earning ~ as.factor(course) * as.factor(degree), data = set_to_zero)
+plot(TukeyHSD((fit6.3), "as.factor(course)", order = T))
+```
+
+</br>
+
+The above plot shows 95% family-wise confidence interval for all pairwise comparison of courses. From 3-1, 3-2, 3-4, we can see that 3 (engineering) is significantly larger than 1 (humanities), 2 (social science), and 4 (management). The order of in the mean of earning of the four subjects are: engineering > management > social science > humanities. 
+
+```{r}
+attach(set_to_zero)
+par(mfrow = c(1,3))
+plot(TukeyHSD(aov(earning[degree=="1"] ~ as.factor(course[degree=="1"])), order = T))
+plot(TukeyHSD(aov(earning[degree=="2"] ~ as.factor(course[degree=="2"])), order = T))
+plot(TukeyHSD(aov(earning[degree=="3"] ~ as.factor(course[degree=="3"])), order = T))
+```
+
+</br>
+
+The above plot shows 95% family-wise confidence interval for all pairwise comparison of courses in terms of degree 1 (bachelor), degree 2 (master), and degree 3 (doctorate). For both bachelor degree and master degree, the 95% family-wise confidence interval for 4-2 (management – social science), 3-2 (engineering - social science) and 3-4 (engineering – management) includes 0, which means that there are no significant differences for these pair subject degrees if the instructors have a bachelor or master degree. But for doctorate degree, there may not be a significant difference only for 2-4 (social science - management). 
+
+</br>
+
+**(e) What combination of factors results in the highest paid adjunct professor? What combination of factors results in the lowest paid adjunct professor? Use an appropriate technique to construct a 99% confidence interval for the difference between highest and lowest paid groups of adjunct professors. Justify the method you have used.**
+```{r}
+high <- earning[32:36]
+low <- earning[1:2]
+diff <- mean(high) - mean(low)
+n1 <- length(high)
+n2 <- length(low)
+h.sampling <- matrix(high, n1, 1000)
+l.sampling <- matrix(low, n2, 1000)
+h.boot <- apply(h.sampling, 2, sample, r = T)
+l.boot <- apply(l.sampling, 2, sample, r = T)
+d.boot <- apply(h.boot, 2, mean) - apply(l.boot, 2, mean)
+quantile(d.boot, c(0.005,0.995))
+```
+Adjunct professor who is in Engineering and have a doctorate degree tends to have the highest earning, and adjunct professors who is in Humanities and have a bachelor degree is more likely to have the lowest earning. Bootstrap method is used to construct the 99% confidence interval for the difference between the highest earnings and lowest earnings. The results above shown that 99% CI are [1.76, 2.12].
+
+</br>
+
+**7. (More for the teengamb problem) Fit a regression model with expenditure on gambling as the response and the sex, status, income and verbal score as covariate.**
+**(a) Which variables are statistically significant?**
+```{r}
+library(faraway)
+attach(teengamb)
+data(teengamb)
+sex <- factor(sex)
+summary(teengamb)
+fit7.1 <- lm(gamble ~., data = teengamb)
+summary(fit7.1)
+```
+The fitted model is $gamble = 22.56 - 22.12 * factor(sex) + 0.05 * status + 4.96 * income -2.96* verbal + error$. The summary table of the fitted model is presented above. The variables *sex* and *income* are significant (p-value < 0.05).
+
+</br>
+
+**(b) What interpretation should be given to the coefficient for sex?**
+
+The sex variable in the fitted model (fit7.1) is constructed under the condition of set-to-zero (male = 0 and female = 1). The estimated coefficient of sex in the model is around -22.12. It means that if other variables are held constant and see male as baseline, the mean gamble cost of females is about 22.12 pounds less than the mean gamble cost of males per year. 
+
+</br>
+
+**(c) Predict the amount that a male with average (given these data) status, income and verbal score would gample along with an appropriate 95% confidence interval. Repeat the prediction for a male with maximal values (for this data) of status, income and verbal score. Which confidence is wider and why?**
+```{r}
+data1 <- data.frame(sex = 0, status = mean(status),income = mean(income), 
+                    verbal = mean(verbal))
+data2 <- data.frame(sex = 0, status = max(status), income = max(income), 
+                    verbal = max(verbal))
+p1 <- predict(fit7.1, newdata = data1, se = T, interval = "prediction")
+p2 <- predict(fit7.1, newdata = data2, se = T, interval = "prediction")
+mean.CI <- c(p1$fit[1,1] - 1.96*p1$se.fit, p1$fit[1,1] + 1.96*p1$se.fit)
+max.CI <- c(p2$fit[1,1] - 1.96*p2$se.fit, p2$fit[1,1] + 1.96*p2$se.fit)
+mean.CI
+max.CI
+```
+The 95% confidence interval for a male with average status, income and verbal score is [19.06, 37.43], and the 95% confidence interval for a male with maximum status, income and verbal score is [43.07, 99.55]. The male with maximum values has a wider 95% confidence interval, because the maximum case is extreme data point, which leads to a greater standard deviation of the prediction.
+
+</br>
+
+**(d) Compare this model with the model with income as the only covariate.**
+```{r}
+fit7.2 <- lm(gamble ~ income, data = teengamb)
+step(lm(gamble ~ 1), data = teengamb, scope = list(upper = formula(fit7.1)),
+     direction = "forward")
+summary(fit7.2)
+```
+The value of AIC for the reduced model (with only intercept and income variable) is 304.34, while the AIC for the full model scenario is 327.22. So the reduced model is better since it has a lower AIC. Then explore further by comparing their diagnostic plots.
+
+```{r}
+library(boot)
+glm.diag.plots(glm(fit7.1))
+title("Full Model")
+glm.diag.plots(glm(fit7.2))
+title("Reduced Model")
+```
+
+</br>
+
+Comparing the two sets of diagnostic plots, we found that the full model doesn’t improve the overall model. Their diagnostic plots are quite similar: the residuals plots both show somewhat violation of equal variance, qqplots both show linear pattern, and Cook's statistic plots both show one influential data point. Therefore it can be concluded that the model with only *income* as variable may be better than the full model.

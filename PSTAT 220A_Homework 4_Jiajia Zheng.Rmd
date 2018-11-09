@@ -1,0 +1,440 @@
+---
+title: "PSTAT 220A - Homework 4"
+author: "Jiajia Zheng"
+date: "11/11/2017"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+**1. (More for the teengamb problem) For the fitted simple linear regression model with the expenditure on gambling as the response and income as covariate:**
+
+</br>
+
+**(a) Check the constant variance assumption for errors**
+
+```{r}
+library(faraway)
+attach(teengamb)
+model1 <- lm(gamble ~ income)
+summary(model1)
+
+par(mfrow = c(1,2))
+plot(fitted(model1), residuals(model1), xlab = "fitted", ylab = "residuals", 
+     main = "fitted v.s. residuals")
+abline(h = 0)
+plot(fitted(model1), abs(residuals(model1)), xlab = "fitted", ylab = "abstract residuals", 
+     main = "fitted v.s. absolute residuals")
+abline(h = 0)
+```
+Constant variance assumption may not hold. The residuals range gets wider with the fitted value increasing, which can be seen from both plots of residuals and absolute residuals change. Also there is an obvious potential outlier at the top of the plot.
+
+</br>
+
+**(b) Check the normality assumption**
+```{r}
+par(mfrow = c(1,2))
+qqnorm(residuals(model1), ylab = "residuals", main = "qqplot of residuals")
+qqline(residuals(model1))
+qqnorm(rstandard(model1), ylab = "standard residuals", 
+       main = "qqplot of standardized residuals")
+qqline(rstandard(model1))
+```
+
+</br>
+
+The qqplot shows that the residuals are relatively normally distributed. But it shows a S shape, which means the residual distribution has heavy tails at two ends, skewed with a high value.
+
+</br>
+
+**(c) Check for large leverage points**
+```{r}
+quartz()
+par(mfrow = c(1,1))
+h <- hatvalues(model1)
+plot(h, ylab = "leverage", main = "leverage of model1")
+identify(h, n = 3)
+```
+Three data points, i.e. 33, 42, 31, have the largest leverages.
+
+</br>
+
+**(d) Check for outliers**
+```{r}
+library(car)
+outlierTest(model1)
+```
+Outlier test shows that the most significant outlier is point 24.
+
+</br>
+
+**(e) Check for influential points**
+```{r}
+influencePlot(model1)
+```
+From the influence plot we can see that point 24 has the largest influence.
+
+</br>
+
+**(f) Check the structure of relationship between the covariates and the response**
+```{r}
+inf1 <- influence(model1)
+summary(inf1)
+quartz()
+par(mfrow = c(1,2))
+plot(inf1$coef[,2], ylab="change in income")
+identify(inf1$coef[,2], n = 1)
+title("change in income")
+plot(income, residuals(model1), xlab = "income", ylab = "residuals", main = "income v.s. residuals")
+identify(income, residuals(model1), n = 1)
+detach(teengamb)
+```
+The coefficient has the largest change of higher than 1.0 if removing the 24th observation. The relationship of the coefficient and residual is relatively linear and no clear higher order relationship is observed. 
+
+</br>
+
+**2. (More for the salary problem) For the fitted linear model with all three independent variables:**
+
+</br>
+
+**(a) Check your fit using residual plots. Use both the standard and standarized residuals. Comments on these plots.**
+```{r}
+data <- read.table("http://www.pstat.ucsb.edu/faculty/yuedong/classes/data/salaries.data",
+                   col.names = c("publication","experience","grant","salary"))
+model2 <- lm(salary ~ publication + experience + grant, data = data)
+summary(model2)
+
+par(mfrow = c(2,2))
+plot(fitted(model2), residuals(model2), xlab = "fitted", ylab = "residuals", 
+     main = "fitted v.s. residuals")
+abline(h = 0)
+plot(fitted(model2), abs(model2$residuals), xlab = "fitted", ylab = "absolute residuals", 
+     main = "fitted v.s. absolute residuals")
+abline(h = 0)
+
+qqnorm(residuals(model2), ylab="residuals", main="qqplot of residuals")
+qqline(residuals(model2))
+qqnorm(rstandard(model2), ylab="residuals", main="qqplot of standarized residuals")
+qqline(rstandard(model2))
+```
+
+</br>
+
+The residuals of the model are quite spread out and no obvious outliers can be identified. However, the absolute residuals value slightly increase with the fitted value grows. QQ plots indicate a relative normal distribution, but several data points on the two end tails are below the QQ line. In all, the equal variance and normality assumption are slightly violated.
+
+</br>
+
+**(b) Do you see a need for transformation? If yes, what kind of transformation would you like to try?**
+
+From the above analysis, I think there is a need for transformation of the response. I would try log transformation first and then use Box-Cox method to find other appropriate transformation.
+
+</br>
+
+**(c) Use the Box-Cox method to determine an appropriate transformation. Fit the transformed data.**
+
+```{r}
+library(MASS)
+bc <- boxcox(model2)
+title("Log-likelihood plot for the Box-Cox transformation")
+```
+
+```{r}
+bc$x[which.max(bc$y)]
+```
+The maximum lambda of log-likelihood transformation for the dependent variable is 0.182.
+
+```{r}
+model3 <- lm(salary^0.182 ~ publication + experience + grant, data = data)
+summary(model3)
+
+par(mfrow = c(2,2))
+plot(fitted(model3), residuals(model3), xlab = "Fitted", ylab = "Residuals")
+abline(h = 0)
+title("residuals vs. fitted")
+plot(fitted(model3), abs(residuals(model3)), xlab = "Fitted", ylab = "Absolute residuals")
+abline(h = 0)
+title("absolute residuals v.s. fitted")
+
+qqnorm(residuals(model3), ylab = "residuals", main = "qqplot of residuals")
+qqline(residuals(model3))
+qqnorm(rstandard(model3), ylab = "residuals", main = "qqplot of standarized residuals")
+qqline(rstandard(model3))
+```
+
+</br>
+
+**The following questions are for the new fit with transformed data if it is necessary.**
+
+</br>
+
+**(d) Are there any outliers?**
+```{r}
+library(car)
+outlierTest(model3)
+```
+According to the outlier test above, the Bonferonni p value is 0.7661. So there are no outliers in the dataset.
+
+</br>
+
+**(e) Plot leverages and Cook’s statistic. Comment on these plots.**
+```{r}
+h <- hatvalues(model3)
+cd <- cooks.distance(model3)
+quartz()
+par(mfrow = c(1,2))
+plot(h, ylab = "leverage")
+plot(h/(1-h), cd, ylab = "Cook Statistic")
+identify(h/(1-h), cd, n = 4)
+```
+There is no obvious data point with large leverage in terms of independent variables. Cook’s distance plot shows that four points have large influences, i.e. the 12th, 20th, 19th and 8th observations.
+
+</br>
+
+**(f) Plot influence on each coefficient and comments on these plots.**
+```{r}
+quartz()
+par(mfrow=c(1,3))
+inf3 <- influence(model3)
+plot(inf3$coef[,2], ylab = "change in publication")
+identify(inf3$coef[,2])
+plot(inf3$coef[,3], ylab = "change in experience")
+identify(inf3$coef[,3])
+plot(inf3$coef[,4], ylab = "change in grant")
+identify(inf3$coef[,4])
+```
+All of those identified larger influential data points compared to other points are close to 0.001. So we conclude that those data points may have some influence in terms of independent variables.
+
+</br>
+
+**(g) Construct added variable and partial residual plots. Comment on these plots.**
+```{r}
+attach(data)
+par(mfrow=c(2,3))
+d1 <- residuals(lm(salary ~ experience + grant))
+m1 <- residuals(lm(publication ~ experience + grant))
+plot(m1, d1, xlab = "publication", ylab = "salary residuals")
+abline (0, coef(model2)[2])
+lines(lowess(m1, d1), col = "red", lty = 2)
+title("added variable plot for publication")
+
+d2 <- residuals(lm(salary ~ publication + grant))
+m2 <- residuals(lm(experience ~ publication + grant))
+plot(m2,d2, xlab = "experience", ylab = "salary residuals")
+abline (0, coef(model2)[3])
+lines(lowess(m2, d2), col = "red", lty = 2)
+title("added variable plot for experience")
+
+d3 <- residuals(lm(salary ~ publication + experience))
+m3 <- residuals(lm(grant ~ publication + experience))
+plot(m3, d3, xlab = "grant", ylab = "salary residuals")
+abline (0, coef(model2)[4])
+lines(lowess(m3,d3), col = "red", lty = 2)
+title("added variable plot for grant")
+
+pr1 <- residuals(model2) + coef(model2)[2]*publication
+pr2 <- residuals(model2) + coef(model2)[3]*experience
+pr3 <- residuals(model2) + coef(model2)[4]*grant
+
+plot(publication, pr1, xlab = "publication", ylab = "partial residuals")
+abline(0, coef(model2)[2])
+lines(lowess(publication, pr1), col = "red", lty = 2)
+title("partial residual of publication")
+
+plot(experience, pr2, xlab = "experience", ylab = "partial residuals")
+abline(0, coef(model2)[3])
+lines(lowess(experience, pr2), col = "red", lty = 2)
+title("partial residual of experience")
+
+plot(grant, pr3, xlab="grant", ylab = "partial residuals")
+abline(0, coef(model2)[4])
+lines(lowess(grant, pr3), col = "red", lty = 2)
+title("partial residual of grant")
+```
+
+</br>
+
+In the above plots, the lowess line of variable *experience* is most close to the straight line, confirming a valid linear pattern. While for the other two variables *publication* and *grant* support show a quadratic pattern, so a higher order terms may be needed for them.
+
+</br>
+
+**(h) Do you improve the model by adding higher order terms?**
+```{r}
+model4 <- lm(salary^0.182 ~ publication + experience + grant + I(publication^2) 
+             + I(grant^2))
+summary(model4)
+```
+The summary of model4 shows that by adding second order term to variable *publication* and variable *grant* does not significantly improve the whole model performance, indicated by high p-value, 0.325 and 0.120 respectively.
+
+</br>
+
+**(i) Do you improve the model by adding multiplicative interaction terms?**
+```{r}
+model5 <- lm(salary^0.182 ~ publication + experience + grant + I(publication * experience) 
+             + I(experience * grant) + I(publication * grant))
+summary(model5)
+```
+The summary of model5 shows that adding the multiplicative interaction terms does not improve the model, indicated by the high p value of the three interaction terms, 0.992, 0.348 and 0.806, respectively.
+
+</br>
+
+**(j) State your final model using the estimated coefficients and interpret this model.**
+```{r}
+model6 <- lm(salary^0.182 ~ publication + experience + grant)
+summary(model6)
+detach(data)
+```
+The final fitted model is: $salary^{0.182} = 1.756 + 0.0115*publication + 0.0027*experience + 0.0105*grant$
+
+</br>
+
+The interpretation of this model is as following:
+
+</br>
+
+1. The basic annual salary for a mathematician is 1.756 thousand dollars, even if there is zero publication quality, years of experience and grants of support. 
+2. The response salary^0.182^ will increase by 0.0115 thousand dollars when the variable publication quality added by 1 unit, with the other two variables remain unchanged. 
+3. The response salary^0.182^ will increase by 0.0027 thousand dollars when the variable years of experience added by 1 unit, with the other two variables remain unchanged. 
+4. The response salary^0.182^ will increase by 0.0105 thousand dollars when the variable grants of support added by 1 unit, with the other two variables remain unchanged.
+
+</br>
+
+**3. Using the divusa data in the faraway library, fit a regression model with divorce as the response and remaining variables as covariates.**
+
+</br>
+
+**(a) Speculate why observations might be correlated.**
+```{r}
+library(faraway)
+data(divusa)
+model.divorce <- lm(divorce ~ year + unemployed + femlab + marriage + birth + military, 
+                    data = divusa)
+summary(model.divorce)
+```
+The model is well-fitted with a R-squared of 0.9344. All independent variables are also significant except for one (*unemployed*). Since the data is time series type, a correlation between observations may exist, and there could be a positive autocorrelation in the data set. 
+
+</br>
+
+**(b) Make two graphical checks for correlated errors. What do you conclude?**
+```{r}
+r <- residuals(model.divorce)
+par(mfrow=c(1,2))
+plot(r, ylab = "residuals")
+abline(h=0)
+
+plot(r[-length(r)], r[-1], 
+     xlab = expression(hat(epsilon)[i]),
+     ylab = expression(hat(epsilon)[i+1]))
+lines(lowess(r[-length(r)], r[-1]), col = "red", lty = 2)
+```
+
+</br>
+
+The residual plot shows a seasonal pattern and the right plot indicates positive autocorrelation in the data set. 
+
+**(c) Test the presence of autocorrelation.**
+```{R}
+durbinWatsonTest(model.divorce)
+```
+The p value of the Durbin Watson test is zero, showing that there is autocorrelation. 
+
+</br>
+
+**4. Find a good model for the pressure data with pressure as the response variable and temperature as covariate. Perform diagnostics for the fitted model. Construct pointwise and simultaneous 95% confidence band for the prediction of future mean response.**
+```{r}
+library(datasets)
+attach(pressure)
+y <- pressure
+x <- temperature
+par(mfrow = c(1,2))
+plot(x, y, xlab = "temperature", ylab = "pressure")
+plot(x, log(y), xlab = "temperature", ylab = "pressure")
+```
+
+</br>
+
+It seems like the pressure is in exponential relationship with temperature. Conduct a log transformation to the model.
+
+```{r}
+fit1 = glm(log(pressure) ~ temperature)
+summary(fit1)
+```
+Then examine the partial residual plot to check if there is a higher order relationship.
+
+```{r}
+fit <- lm(y ~ x)
+library(MASS)
+bc <- boxcox(fit)
+```
+
+```{r}
+bc$x[which.max(bc$y)]
+```
+Use Box-Cox method to determine an approperiate transformation. Got the lambda close to 0.10. Then apply transformation using lamba = 0.10.
+
+```{r}
+plot(x, y^0.1, xlab = "temperature", ylab = "pressure^0.1")
+```
+</br>
+
+The pressure^0.1 is in good linear relationship with temperature.
+
+```{r}
+library(boot)
+par(mfrow = c(2,2))
+fit1 <- glm(y^0.1 ~ x)
+glm.diag.plots(fit1)
+```
+
+</br>
+
+Check the possible nonlinear relationship between transformed pressure and temperature by plotting residuals v.s. covariant. The above plot shows that there exists high order terms in the independent variable.
+
+```{r}
+# use automatic selection function
+fit2 <- glm(y^0.1 ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5))
+summary(fit2) 
+step(fit2, direction = "backward")
+```
+The above step function results show that the best model is: 
+$pressure^{0.1} = 0.4249 + (4.36e-03) * temperature + (3.288e-06) * temperature - (1.523e-08)  * temperautre + (1.446e-11) * temperature$
+
+```{r}
+#Perform diagnostics for the fitted model
+glm.diag.plots(fit2)
+```
+
+</br>
+
+The new model's diognostic plots show that the model complies to the constant variance and normality assumptions much better. There is only two outliers, with high influence (Cook statistic > 0.5) which needs to be further investigated.
+
+```{r}
+#Construct pointwise and simultaneous 95% confidence band for the prediction of future mean response
+par(mfrow = c(1,2))
+grid <- seq(min(x), max(x), length(x))
+p1 <- predict(fit2, newdata = data.frame(x = grid),
+              se = T, interval = "confidence")
+p2 <- predict(fit2, newdata = data.frame(x = grid),
+              se = T, interval = "prediction")
+matplot(grid, p1$fit, lty = c(1,2,2), col = c(1,2,2), type = "l",
+        xlab = "temperature", ylab = "pressure^0.1")
+points(x, y, cex = 0.5)
+title("prediction of mean response")
+lines(grid, p1$fit - sqrt(2*qf(0.95, 2, length(x)-2))*p1$se.fit,
+      lty = 3, col = "blue")
+lines(grid, p1$fit + sqrt(2*qf(0.95, 2, length(x)-2))*p1$se.fit,
+      lty = 3, col = "blue")
+legend("topleft", col = c("black","red","blue"),
+       legend = c("estimation", "point-wise CI", "simultaneous CI"),
+       lty = c(1,2,3))
+
+matplot(grid, p2$fit, lty = c(1,2,2), col = c(1,2,2), type = "l",
+        xlab = "temperature", ylab = "pressure^0.1")
+points(x, y, cex = 1.5)
+title("prediction of future observation")
+```
+
+</br>
+
+The 95% confidence interval of both the point-wise and simultaneous bands for the prediction of mean response is shown above. Both point-wise and simultaneous bands are very close to the estimate line, showing high consistency between data and fitted model. This may be attributed to the small sample size. Two influential data points are far always from the fitted line.
+

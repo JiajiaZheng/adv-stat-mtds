@@ -1,0 +1,286 @@
+---
+title: "HOMEWORK 1 - PSTAT 220A"
+author: "Jiajia Zheng"
+date: "10/8/2017"
+output:
+   pdf_document: 
+      latex_engine: xelatex
+---
+1. Write a R function that returns the following dispersion measures:
+(a) Standard deviation;
+(b) Mean absolute deviation n
+(c) Median absolute deviation Median|xi − Median(x)|;
+(d) Inter-quartile range
+
+```{r}
+dis.measures <- function(x){
+  sd = sd(x)
+  aad = mad(x, constant = 1)
+  mad = mad(x)
+  IQR = IQR(x)
+  return(c(sd, aad, mad, IQR))
+}
+```
+<\br>
+
+<\br>
+
+2. For the data set pima in library faraway, apply the R function you have constructed
+above to compute standard deviations, mean absolute deviation, median absolute deviation
+and inter-quartile range for the following variables: pregnant, diastolic, bmi and
+age. Construct box-plots, histograms, QQ-plots and kernel density estimates for these
+variables. Comment on features such as the distribution and outliers in these plots.
+
+```{r}
+library(MASS)
+data(Pima.tr)
+p <- Pima.tr
+para_npreg <- dis.measures(p$npreg)
+para_dias <- dis.measures(p$bp)
+para_bmi <- dis.measures(p$bmi)
+para_age <- dis.measures(p$age)
+```
+
+Start plotting the parameters:
+```{r}
+par(mfrow = c(2,2))
+boxplot(p$npreg, ylab = "Pregnance Times")
+hist(p$npreg, font.main = 1)
+qqnorm(p$npreg, font.main = 1)
+plot(density(p$npreg), font.main = 1)
+mtext("Plots of Variable: Pregnancy", outer = TRUE, line = -1, font = 2, side = 3)
+```
+
+Comments:
+
+* The distribution is left skewed
+
+* The median pregancy times is 2
+
+* Only 25% women have more than 6 times of pregnancy, with 1 outlier  
+  
+<\br>  
+  
+```{r}
+par(mfrow = c(2,2))
+boxplot(p$bp, ylab = "Blood Pressure")
+hist(p$bp, font.main = 1)
+qqnorm(p$bp, font.main = 1)
+plot(density(p$bp), font.main = 1)
+mtext("Plots of Variable: Diastolic", outer = TRUE, line = -1, font = 2, side = 3)
+```
+
+Comments:
+
+* The blood pressure accords to approximately normal distribution
+
+* The median of diastolic blood pressure is 50
+
+* There are several outliers  
+
+<\br>
+
+```{r}
+par(mfrow = c(2,2))
+boxplot(p$bmi, ylab = "BMI Value")
+hist(p$bmi, font.main = 1)
+qqnorm(p$bmi, font.main = 1)
+plot(density(p$bmi), font.main = 1)
+mtext("Plots of Variable: BMI", outer = TRUE, line = -1, font = 2, side = 3)
+```
+
+Comments:
+
+* The BMI accords to approximately normal distribution
+
+* The median of BMI is 33, with no outliers  
+
+<\br>
+```{r}
+par(mfrow = c(2,2))
+boxplot(p$age, ylab = "Age")
+hist(p$age, font.main = 1)
+qqnorm(p$age, font.main = 1)
+plot(density(p$age), font.main = 1)
+mtext("Plots of Variable: Age", outer = TRUE, line = -1, font = 2, side = 3)
+```
+
+Comments:
+
+* The age distribution is highly left skewed
+
+* The median age is 28, with no outliers
+
+* Only 25% women were over 40 years old  
+
+<\br>
+
+<\br>
+
+3. The following observations are precipitation values during March over a 30-year period
+in Minneapolis-St. Paul.
+
+       0.77 1.20 3.00 1.62 2.81 2.48 1.74 0.47 3.09 1.31
+       1.87 0.96 0.81 1.43 1.51 0.32 1.18 1.89 1.20 3.37
+       2.10 0.59 1.35 0.90 1.95 2.20 0.52 0.81 4.75 2.05
+
+(a) Construct QQ-plot. Is normality plausible?
+(b) If not, can you find a transformation such that the normality assumption is appropriate?
+
+```{r}
+install.packages("xlsx", repos = "http://cran.us.r-project.org")
+library(readxl)
+MS_rain <- read_excel("~/Documents/Precipitation.xlsx")
+qqnorm(MS_rain$Precipitation); qqline(MS_rain$Precipitation)
+```
+
+The above qqplot shows that it does not apply to normal distribution.  
+
+
+```{r}
+# So let's try lognormal distribution
+
+MS_rain["ln_MS_rain"] <- log(MS_rain$Precipitation)
+qqnorm(MS_rain$ln_MS_rain); qqline(MS_rain$ln_MS_rain)
+```
+
+The log value of precipitation applies to normal distribution.    
+  
+<\br>
+
+<\br>
+
+4. The following data are failure times in hours of 45 transmissions from caterpillar tractors
+belonging to a particular American company:
+
+        4381 3953 2603 2320 1161 3286 6914 4007 3168
+        2376 7498 3923 9460 4525 2168 1288 5085 2217
+        6922 218 1309 1875 1023 1697 1038 3699 6142
+        4732 3330 4159 2537 3814 2157 7683 5539 4839
+        6052 2420 5556 309 1295 3266 6679 1711 5931
+
+Use QQ-plots to examine the applicability of the following models for the probability
+distribution of failure time: normal, lognormal, exponential and Gamma (hint: check
+out the function fitdistr in the library MASS to fit these distributions. You may
+rescale the data if you have numerical problems). For the model that fits best (explain
+how you determine which model fits best), compare the PDF with the kernel density
+estimate.
+
+
+```{r}
+library(readxl)
+
+Failuretimes <- read_excel("~/Documents/Failuretimes.xlsx")
+f <- Failuretimes$Failure
+par(mfrow = c(1,1))
+hist(f)
+```
+
+Now use *fitdistr* function:
+```{r}
+fit_norm <- fitdistr(f, "normal")
+fit_norm$estimate
+fit_norm$loglik
+```
+```{r}
+fit_lognorm <- fitdistr(f, "lognormal")
+fit_lognorm$estimate
+fit_lognorm$loglik
+```
+
+```{r}
+fit_exp <- fitdistr(f, "exponential")
+fit_exp$estimate
+fit_exp$loglik
+```
+
+```{r}
+fit_gam <- fitdistr(f, "gamma", lower=0.0011)
+fit_gam$estimate
+fit_gam$loglik
+```
+
+Then draw qqlot of each distribution:
+```{r}
+par(mfrow = c(2,2))
+
+qqplot(f, rnorm(1000, fit_norm$estimate[1], fit_norm$estimate[2]), ylab = "", main = "norm")
+abline(0, 1)
+
+qqplot(f, rlnorm(1000, fit_lognorm$estimate[1], fit_lognorm$estimate[2]), ylab = "", main = "lognorm")
+abline(0, 1)
+
+qqplot(f, rexp(1000, fit_exp$estimate[1]), ylab = "", main = "exp")
+abline(0, 1)
+
+qqplot(f, rgamma(1000, fit_gam$estimate[1], fit_gam$estimate[2]), ylab = "", main = "gamma")
+abline(0, 1)
+```
+
+Normal distribution fits best based on the following qqplot results.  
+  
+<\br>
+
+```{r}
+# Let's compare the PDF with the kernel density estimate
+fit_base <- seq(0, 10000, 1)
+hist(f, freq = F)
+lines(density(f))
+lines(fit_base, dnorm(fit_base, fit_norm$estimate[1], fit_norm$estimate[2]), col = "red")
+legend("topright", c("density estimate", "normal distribution"), col = c("black","red"), lty = c(1,1))
+```
+
+<\br>
+
+<\br>
+  
+5. Generate 5,000 random samples from the exponential distribution with rate=1. Plot
+the histogram and comment on the shape of the distribution. Now break 5,000 samples
+into 50 groups with 100 samples in each group. Compute averages in each group and
+plot the histogram of these averages. Do these two histograms have the same shape?
+Why or why not?
+
+```{r}
+x <- rexp(5000, rate = 1)
+hist(x)
+```
+
+The shape is higly left skewed with exponential distribution.  
+
+<\br>
+
+```{r}
+# Now split the dataset into 50 groups with 100 samples in each group and calculate the mean
+x_split <- as.data.frame(split(x, 1:50))
+x_split_mean <- colMeans(x_split)
+hist(x_split_mean)
+```
+
+The histogram of the subgroups' mean distribution shape is more like normal distribution, which is very different with the total group distribution.  
+  
+<\br>
+
+<\br>
+
+6. Generate 600 random samples from the normal distribution with mean 10 and standard
+deviation 5. Divide these 600 samples into 100 groups each with 6 samples. Compute
+the statistic (X¯ − 10)/sqrt(S^2/6) for each group. What kind of distribution do you expect this statistic to follow? Now you have 100 such statistics, can you check if these
+statistics actually follow the expected distribution?
+
+
+```{r}
+install.packages("matrixStats", repos = "http://cran.us.r-project.org")
+library(matrixStats)
+
+a <- rnorm(600, mean = 10, sd = 5)
+a_split <- as.data.frame(split(a, 1:100))
+a_split_stat <- (colMeans(a_split) - 10)/sqrt((colSds(as.matrix(a_split))^2 / 6))
+
+hist(a_split_stat)
+```
+
+```{r}
+qqnorm(a_split_stat); qqline(a_split_stat)
+```
+
+The calculation results distribution is nearly normal distribution with only several outliers.
